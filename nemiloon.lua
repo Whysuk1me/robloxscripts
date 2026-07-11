@@ -16,7 +16,7 @@ if not Drawing then
 end
 
 -- [[ ЗАГРУЗКА GUI БИБЛИОТЕКИ (ФОРК RISEBLOX) ]]
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RiseBlox/Depthso-Roblox-ImGui/main/ImGui.lua"))()
+local Library = loadstring(game:HttpGet('https://github.com/RiseBlox/Roblox-ImGUI/raw/main/ImGui.lua'))()
 
 -- [[ КОНФИГУРАЦИЯ ]]
 local ConfigPath = "C:\\Xeno\\workspace\\NemiLon\\config.json"
