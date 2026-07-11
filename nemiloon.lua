@@ -15,17 +15,8 @@ if not Drawing then
     return
 end
 
--- [[ ЗАГРУЗКА GUI БИБЛИОТЕКИ DEPTHSO (ОРИГИНАЛЬНЫЙ РЕПОЗИТОРИЙ) ]]
-local Library
-local success, err = pcall(function()
-    Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Depthso/Roblox-ImGui/main/ImGui.lua"))()
-end)
-
-if not success or type(Library) ~= "table" then
-    warn("Failed to load Depthso ImGui Library. Error: " .. tostring(err))
-    warn("Library returned: " .. tostring(Library))
-    return
-end
+-- [[ ЗАГРУЗКА GUI БИБЛИОТЕКИ (ФОРК RISEBLOX) ]]
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RiseBlox/Depthso-Roblox-ImGui/main/ImGui.lua"))()
 
 -- [[ КОНФИГУРАЦИЯ ]]
 local ConfigPath = "C:\\Xeno\\workspace\\NemiLon\\config.json"
@@ -361,17 +352,8 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- [[ СОЗДАНИЕ GUI DEPTHSO ]]
--- Совместимость с разными версиями либы (CreateWindow / Window)
-local Window
-if Library.CreateWindow then
-    Window = Library:CreateWindow("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
-elseif Library.Window then
-    Window = Library:Window("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
-else
-    warn("Depthso ImGui Error: Cannot find CreateWindow or Window method.")
-    return
-end
+-- [[ СОЗДАНИЕ GUI ]]
+local Window = Library:CreateWindow("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
 
 local AimbotTab = Window:Tab("Aimbot")
 local VisualsTab = Window:Tab("Visuals")
@@ -523,4 +505,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("✅ NemiLon Script loaded with Depthso ImGui. Press M to open GUI.")
+print("✅ NemiLon Script loaded with RiseBlox ImGui. Press M to open GUI.")
