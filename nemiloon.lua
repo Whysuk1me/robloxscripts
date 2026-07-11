@@ -15,8 +15,17 @@ if not Drawing then
     return
 end
 
--- [[ ЗАГРУЗКА GUI БИБЛИОТЕКИ DEPTHSO ]]
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RiseBlox/Depthso-Roblox-ImGui/main/ImGui.lua"))()
+-- [[ ЗАГРУЗКА GUI БИБЛИОТЕКИ DEPTHSO (ОРИГИНАЛЬНЫЙ РЕПОЗИТОРИЙ) ]]
+local Library
+local success, err = pcall(function()
+    Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Depthso/Roblox-ImGui/main/ImGui.lua"))()
+end)
+
+if not success or type(Library) ~= "table" then
+    warn("Failed to load Depthso ImGui Library. Error: " .. tostring(err))
+    warn("Library returned: " .. tostring(Library))
+    return
+end
 
 -- [[ КОНФИГУРАЦИЯ ]]
 local ConfigPath = "C:\\Xeno\\workspace\\NemiLon\\config.json"
@@ -353,7 +362,16 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 -- [[ СОЗДАНИЕ GUI DEPTHSO ]]
-local Window = Library:CreateWindow("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
+-- Совместимость с разными версиями либы (CreateWindow / Window)
+local Window
+if Library.CreateWindow then
+    Window = Library:CreateWindow("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
+elseif Library.Window then
+    Window = Library:Window("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
+else
+    warn("Depthso ImGui Error: Cannot find CreateWindow or Window method.")
+    return
+end
 
 local AimbotTab = Window:Tab("Aimbot")
 local VisualsTab = Window:Tab("Visuals")
@@ -410,7 +428,7 @@ ConfigTab:Label("Config Management")
 ConfigTab:Button("Save Config", SaveConfig)
 ConfigTab:Button("Remove Script", RemoveScript)
 
--- [[ KEYBIND VISUALIZER (Кастомный поверх ImGui) ]]
+-- [[ KEYBIND VISUALIZER ]]
 local kbFrame = Instance.new("Frame")
 kbFrame.Size = UDim2.new(0, 180, 0, 60)
 kbFrame.Position = UDim2.new(0, 20, 1, -80)
@@ -488,7 +506,7 @@ ESPThread = task.spawn(function()
             UpdateESP()
             task.wait(Config.Optimization.ThrottleRate)
         else
-            task.wait(1) -- Sleep if not throttled to save cpu
+            task.wait(1)
         end
     end
 end)
