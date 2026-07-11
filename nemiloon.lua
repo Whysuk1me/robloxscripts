@@ -15,13 +15,14 @@ if not Drawing then
     return
 end
 
+-- [[ ЗАГРУЗКА GUI БИБЛИОТЕКИ DEPTHSO ]]
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RiseBlox/Depthso-Roblox-ImGui/main/ImGui.lua"))()
+
 -- [[ КОНФИГУРАЦИЯ ]]
 local ConfigPath = "C:\\Xeno\\workspace\\NemiLon\\config.json"
 
 local DefaultConfig = {
     GUI = {
-        Open = false,
-        Key = "M",
         ShowKeybinds = true
     },
     Aimbot = {
@@ -73,7 +74,6 @@ if isfile and readfile and isfile(ConfigPath) then
     end)
     if success and type(result) == "table" then
         Config = result
-        -- Мержим с дефолтом, чтобы не было nil ошибок при обновлении скрипта
         for cat, vars in pairs(DefaultConfig) do
             if not Config[cat] then Config[cat] = {} end
             for k, v in pairs(vars) do
@@ -101,26 +101,9 @@ local CurrentTarget = nil
 local AimbotActive = false
 local FOVCircle = Drawing.new("Circle")
 local ESPCache = {}
-local GUIObjects = {}
 local ScriptRemoved = false
 local RenderConnection = nil
 local ESPThread = nil
-
--- [[ IMGUI STYLE THEME ]]
-local UI = {
-    WindowBg = Color3.fromRGB(20, 20, 20),
-    ChildBg = Color3.fromRGB(28, 28, 28),
-    Border = Color3.fromRGB(0, 0, 0),
-    Text = Color3.fromRGB(225, 225, 225),
-    TextDisabled = Color3.fromRGB(120, 120, 120),
-    FrameBg = Color3.fromRGB(42, 42, 42),
-    FrameBgHover = Color3.fromRGB(55, 55, 55),
-    TitleBg = Color3.fromRGB(25, 25, 25),
-    Accent = Color3.fromRGB(40, 120, 200),
-    AccentHover = Color3.fromRGB(55, 135, 215),
-    CheckMark = Color3.fromRGB(40, 120, 200),
-    Separator = Color3.fromRGB(60, 60, 60)
-}
 
 -- [[ ФУНКЦИЯ УДАЛЕНИЯ СКРИПТА ]]
 local function RemoveScript()
@@ -141,10 +124,9 @@ local function RemoveScript()
     end
     ESPCache = {}
 
-    for _, obj in ipairs(GUIObjects) do
-        pcall(function() obj:Destroy() end)
+    if Library and Library.Unload then
+        Library:Unload()
     end
-    GUIObjects = {}
 
     print("✅ Script removed successfully!")
 end
@@ -327,7 +309,6 @@ local function UpdateESP()
                         if Config.ESP.Arrows then
                             local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
                             local dir = (Vector2.new(screenPos.X, screenPos.Y) - center)
-                            -- Отключаем стрелку, если цель прямо по центру за спиной
                             if dir.Magnitude > 10 then 
                                 visible = true
                                 local angle = math.atan2(dir.Y, dir.X)
@@ -371,261 +352,93 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- [[ IMGUI GUI LIBRARY ]]
-local TooltipText = ""
-local CurrentTooltip = nil
+-- [[ СОЗДАНИЕ GUI DEPTHSO ]]
+local Window = Library:CreateWindow("NemiLon Aim Assist", Vector2.new(600, 450), Enum.KeyCode.M)
 
-local function CreateElement(parent, type, props)
-    local el = Instance.new(type)
-    for k, v in pairs(props) do el[k] = v end
-    el.Parent = parent
-    table.insert(GUIObjects, el)
-    return el
-end
+local AimbotTab = Window:Tab("Aimbot")
+local VisualsTab = Window:Tab("Visuals")
+local OptimizationTab = Window:Tab("Optimization")
+local ConfigTab = Window:Tab("Config")
 
-local function MakeDraggable(topFrame, frame)
-    local dragging, dragInput, dragStart, startPos
-    topFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    topFrame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-end
+-- AIMBOT TAB
+AimbotTab:Toggle("Enable Aimbot", Config.Aimbot.Enabled, function(v) Config.Aimbot.Enabled = v end)
+AimbotTab:Toggle("Toggle Mode", Config.Aimbot.ToggleMode, function(v) Config.Aimbot.ToggleMode = v end)
+AimbotTab:Toggle("Wall Check", Config.Aimbot.WallCheck, function(v) Config.Aimbot.WallCheck = v end)
+AimbotTab:Toggle("Target Indicator", Config.Aimbot.TargetIndicator, function(v) Config.Aimbot.TargetIndicator = v end)
+AimbotTab:Toggle("Show FOV Circle", Config.Aimbot.ShowFOV, function(v) Config.Aimbot.ShowFOV = v end)
+AimbotTab:Dropdown("Aim Key", {"MouseButton1", "MouseButton2", "Q", "E", "R", "F", "Shift", "Ctrl", "Alt", "C", "V"}, Config.Aimbot.Key, function(v) Config.Aimbot.Key = v end)
+AimbotTab:Dropdown("Aim Part", {"Head", "Chest", "HumanoidRootPart"}, Config.Aimbot.AimPart, function(v) Config.Aimbot.AimPart = v end)
+AimbotTab:Slider("Smoothness", 0, 0.99, 0.01, Config.Aimbot.Smoothness, function(v) Config.Aimbot.Smoothness = v end)
+AimbotTab:Slider("FOV Radius", 50, 500, 5, Config.Aimbot.FOV, function(v) Config.Aimbot.FOV = v end)
 
-local function BindTooltip(btn, text)
-    btn.MouseEnter:Connect(function() TooltipText = text end)
-    btn.MouseLeave:Connect(function() TooltipText = "" end)
-end
+-- VISUALS TAB
+VisualsTab:Label("ESP Settings")
+VisualsTab:Toggle("Enable ESP", Config.ESP.Enabled, function(v) Config.ESP.Enabled = v end)
+VisualsTab:Toggle("Show Box", Config.ESP.Box, function(v) Config.ESP.Box = v end)
+VisualsTab:Dropdown("Box Type", {"Full", "Corner"}, Config.ESP.BoxType, function(v) Config.ESP.BoxType = v end)
+VisualsTab:Toggle("Name", Config.ESP.Name, function(v) Config.ESP.Name = v end)
+VisualsTab:Toggle("Distance", Config.ESP.Distance, function(v) Config.ESP.Distance = v end)
+VisualsTab:Toggle("Health Bar", Config.ESP.HealthBar, function(v) Config.ESP.HealthBar = v end)
+VisualsTab:Slider("Max Distance", 100, 3000, 50, Config.ESP.MaxDistance, function(v) Config.ESP.MaxDistance = v end)
 
-local function CreateCheckbox(parent, text, state, callback, tooltip)
-    local container = CreateElement(parent, "Frame", {Size=UDim2.new(1,-20,0,20), BackgroundTransparency=1})
-    local btn = CreateElement(container, "TextButton", {Size=UDim2.new(0,16,0,16), Position=UDim2.new(0,0,0,2), BackgroundColor3=UI.FrameBg, BorderSizePixel=1, BorderColor3=UI.Border, Text="", AutoButtonColor=false})
-    local label = CreateElement(container, "TextLabel", {Size=UDim2.new(1,-24,0,20), Position=UDim2.new(0,22,0,0), BackgroundTransparency=1, Text=text, TextColor3=UI.Text, TextXAlignment=Enum.TextXAlignment.Left, Font=Enum.Font.SourceSans, TextSize=14})
-    
-    local function update()
-        if state then btn.BackgroundColor3 = UI.Accent; btn.Text = "X"; btn.TextColor3 = Color3.fromRGB(255,255,255); btn.Font = Enum.Font.SourceSansBold; btn.TextSize = 12
-        else btn.BackgroundColor3 = UI.FrameBg; btn.Text = "" end
-    end
-    update()
-    btn.MouseButton1Click:Connect(function() state = not state; update(); if callback then callback(state) end end)
-    btn.MouseEnter:Connect(function() if not state then btn.BackgroundColor3 = UI.FrameBgHover end end)
-    btn.MouseLeave:Connect(function() if not state then btn.BackgroundColor3 = UI.FrameBg end end)
-    if tooltip then BindTooltip(label, tooltip); BindTooltip(btn, tooltip) end
-    return container
-end
+VisualsTab:Label("Render Features")
+VisualsTab:Toggle("Highlight (Chams)", Config.ESP.Highlight, function(v) Config.ESP.Highlight = v end)
+VisualsTab:Toggle("Off-Screen Arrows", Config.ESP.Arrows, function(v) Config.ESP.Arrows = v end)
+VisualsTab:Slider("Arrow Size", 5, 50, 1, Config.ESP.ArrowSize, function(v) Config.ESP.ArrowSize = v end)
 
-local function CreateSlider(parent, text, min, max, step, default, callback, tooltip)
-    local container = CreateElement(parent, "Frame", {Size=UDim2.new(1,-20,0,35), BackgroundTransparency=1})
-    local valTxt = string.format("%.2f", default)
-    CreateElement(container, "TextLabel", {Size=UDim2.new(1,-100,0,15), BackgroundTransparency=1, Text=text, TextColor3=UI.Text, TextXAlignment=Enum.TextXAlignment.Left, Font=Enum.Font.SourceSans, TextSize=14})
-    CreateElement(container, "TextLabel", {Size=UDim2.new(0,100,0,15), Position=UDim2.new(1,-100,0,0), BackgroundTransparency=1, Text=valTxt, TextColor3=UI.Text, TextXAlignment=Enum.TextXAlignment.Right, Font=Enum.Font.SourceSans, TextSize=14})
-    
-    local track = CreateElement(container, "Frame", {Size=UDim2.new(1,0,0,6), Position=UDim2.new(0,0,0,20), BackgroundColor3=UI.FrameBg, BorderSizePixel=1, BorderColor3=UI.Border})
-    local fill = CreateElement(track, "Frame", {Size=UDim2.new((default-min)/(max-min),0,1,0), BackgroundColor3=UI.Accent, BorderSizePixel=0})
-    
-    local dragging = false
-    local function update(input)
-        local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-        local val = min + pct * (max - min)
-        val = math.floor(val / step + 0.5) * step
-        val = math.clamp(val, min, max)
-        fill.Size = UDim2.new((val-min)/(max-min), 0, 1, 0)
-        container.Children[2].Text = string.format("%.2f", val)
-        if callback then callback(val) end
-    end
-    track.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging=true; update(input) end end)
-    UserInputService.InputChanged:Connect(function(input) if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then update(input) end end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging=false end end)
-    if tooltip then BindTooltip(container, tooltip) end
-    return container
-end
+VisualsTab:Label("Colors")
+VisualsTab:ColorPicker("Box/Corner", Config.Colors.Box, function(v) Config.Colors.Box=v; Config.Colors.Corner=v end)
+VisualsTab:ColorPicker("Name", Config.Colors.Name, function(v) Config.Colors.Name = v end)
+VisualsTab:ColorPicker("Health", Config.Colors.HealthBar, function(v) Config.Colors.HealthBar = v end)
+VisualsTab:ColorPicker("Distance", Config.Colors.Distance, function(v) Config.Colors.Distance = v end)
+VisualsTab:ColorPicker("FOV Circle", Config.Colors.FOV, function(v) Config.Colors.FOV = v end)
+VisualsTab:ColorPicker("Target Indicator", Config.Colors.Target, function(v) Config.Colors.Target = v end)
+VisualsTab:ColorPicker("Highlight", Config.Colors.Highlight, function(v) Config.Colors.Highlight = v end)
+VisualsTab:ColorPicker("Arrows", Config.Colors.Arrow, function(v) Config.Colors.Arrow = v end)
 
-local function CreateDropdown(parent, text, options, default, callback, tooltip)
-    local container = CreateElement(parent, "Frame", {Size=UDim2.new(1,-20,0,25), BackgroundTransparency=1})
-    CreateElement(container, "TextLabel", {Size=UDim2.new(0,100,0,25), BackgroundTransparency=1, Text=text, TextColor3=UI.Text, TextXAlignment=Enum.TextXAlignment.Left, Font=Enum.Font.SourceSans, TextSize=14})
-    local btn = CreateElement(container, "TextButton", {Size=UDim2.new(0,150,0,20), Position=UDim2.new(1,-150,0,2), BackgroundColor3=UI.FrameBg, BorderSizePixel=1, BorderColor3=UI.Border, Text=default, TextColor3=UI.Text, Font=Enum.Font.SourceSans, TextSize=14, AutoButtonColor=false})
-    local idx = table.find(options, default) or 1
-    btn.MouseButton1Click:Connect(function()
-        idx = idx % #options + 1
-        btn.Text = options[idx]
-        if callback then callback(options[idx]) end
-    end)
-    if tooltip then BindTooltip(container, tooltip) end
-    return container
-end
+-- OPTIMIZATION TAB
+OptimizationTab:Label("Performance Tuning")
+OptimizationTab:Toggle("Throttle ESP Update", Config.Optimization.ThrottleESP, function(v) Config.Optimization.ThrottleESP = v end)
+OptimizationTab:Slider("Throttle Rate (sec)", 0.01, 0.2, 0.01, Config.Optimization.ThrottleRate, function(v) Config.Optimization.ThrottleRate = v end)
+OptimizationTab:Toggle("Disable Drawing When Far", Config.Optimization.DisableDrawingOnFar, function(v) Config.Optimization.DisableDrawingOnFar = v end)
 
-local function CreateColorPicker(parent, text, defaultColor, callback)
-    local container = CreateElement(parent, "Frame", {Size=UDim2.new(1,-20,0,20), BackgroundTransparency=1})
-    CreateElement(container, "TextLabel", {Size=UDim2.new(1,-30,0,20), BackgroundTransparency=1, Text=text, TextColor3=UI.Text, TextXAlignment=Enum.TextXAlignment.Left, Font=Enum.Font.SourceSans, TextSize=14})
-    local btn = CreateElement(container, "TextButton", {Size=UDim2.new(0,20,0,20), Position=UDim2.new(1,-20,0,0), BackgroundColor3=defaultColor, BorderSizePixel=1, BorderColor3=UI.Border, Text="", AutoButtonColor=false})
-    local colors = {Color3.fromRGB(255,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,255,0),Color3.fromRGB(0,255,255),Color3.fromRGB(255,0,255),Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0)}
-    local idx = table.find(colors, defaultColor) or 1
-    btn.MouseButton1Click:Connect(function() idx=idx%#colors+1; btn.BackgroundColor3=colors[idx]; if callback then callback(colors[idx]) end end)
-    return container
-end
+-- CONFIG TAB
+ConfigTab:Label("Visualizer")
+ConfigTab:Toggle("Show Keybind Visualizer", Config.GUI.ShowKeybinds, function(v) Config.GUI.ShowKeybinds = v; kbFrame.Visible = v end)
 
-local function CreateSeparator(parent, text)
-    local container = CreateElement(parent, "Frame", {Size=UDim2.new(1,-20,0,20), BackgroundTransparency=1})
-    CreateElement(container, "TextLabel", {Size=UDim2.new(1,0,1,0), BackgroundTransparency=1, Text=text, TextColor3=UI.TextDisabled, TextXAlignment=Enum.TextXAlignment.Left, Font=Enum.Font.SourceSansBold, TextSize=13})
-    CreateElement(container, "Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,0,18), BackgroundColor3=UI.Separator, BorderSizePixel=0})
-    return container
-end
+ConfigTab:Label("Config Management")
+ConfigTab:Button("Save Config", SaveConfig)
+ConfigTab:Button("Remove Script", RemoveScript)
 
-local function CreateButton(parent, text, callback)
-    local btn = CreateElement(parent, "TextButton", {Size=UDim2.new(1,-20,0,25), BackgroundColor3=UI.Accent, BorderSizePixel=1, BorderColor3=UI.Border, Text=text, TextColor3=Color3.fromRGB(255,255,255), Font=Enum.Font.SourceSansBold, TextSize=14, AutoButtonColor=false})
-    btn.MouseEnter:Connect(function() btn.BackgroundColor3 = UI.AccentHover end)
-    btn.MouseLeave:Connect(function() btn.BackgroundColor3 = UI.Accent end)
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
+-- [[ KEYBIND VISUALIZER (Кастомный поверх ImGui) ]]
+local kbFrame = Instance.new("Frame")
+kbFrame.Size = UDim2.new(0, 180, 0, 60)
+kbFrame.Position = UDim2.new(0, 20, 1, -80)
+kbFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+kbFrame.BorderSizePixel = 1
+kbFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+kbFrame.Visible = Config.GUI.ShowKeybinds
+kbFrame.Parent = CoreGui
 
--- [[ СБОРКА GUI ]]
-local function CreateGUI()
-    local screenGui = CreateElement(CoreGui, "ScreenGui", {Name="NemiLonImGui", ResetOnSpawn=false, ZIndexBehavior=Enum.ZIndexBehavior.Sibling})
-    
-    -- Tooltip
-    CurrentTooltip = CreateElement(screenGui, "TextLabel", {Visible=false, ZIndex=100, BackgroundColor3=UI.WindowBg, TextColor3=UI.Text, Font=Enum.Font.SourceSans, TextSize=13, TextXAlignment=Enum.TextXAlignment.Left, TextWrapped=true})
-    CreateElement(CurrentTooltip, "UIStroke", {Color=UI.Border, Thickness=1})
-    
-    -- Keybind Visualizer
-    local kbFrame = CreateElement(screenGui, "Frame", {Size=UDim2.new(0,180,0,60), Position=UDim2.new(0,20,1,-80), BackgroundColor3=UI.WindowBg, BorderSizePixel=1, BorderColor3=UI.Border, Visible=Config.GUI.ShowKeybinds})
-    CreateElement(kbFrame, "UICorner", {CornerRadius=UDim.new(0,2)})
-    CreateElement(kbFrame, "TextLabel", {Size=UDim2.new(1,0,0,20), BackgroundTransparency=1, Text="Keybinds", TextColor3=UI.Text, Font=Enum.Font.SourceSansBold, TextSize=14})
-    local aimbotKb = CreateElement(kbFrame, "TextLabel", {Size=UDim2.new(1,-10,0,20), Position=UDim2.new(0,5,0,25), BackgroundTransparency=1, TextXAlignment=Enum.TextXAlignment.Left, TextColor3=UI.TextDisabled, Font=Enum.Font.SourceSans, TextSize=13})
+local kbCorner = Instance.new("UICorner", kbFrame)
+kbCorner.CornerRadius = UDim.new(0, 2)
 
-    -- Main Window
-    local mainFrame = CreateElement(screenGui, "Frame", {Size=UDim2.new(0,500,0,450), Position=UDim2.new(0.5,-250,0.5,-225), BackgroundColor3=UI.WindowBg, BorderSizePixel=1, BorderColor3=UI.Border, Visible=false, Active=true})
-    CreateElement(mainFrame, "UICorner", {CornerRadius=UDim.new(0,2)})
-    
-    local header = CreateElement(mainFrame, "Frame", {Size=UDim2.new(1,0,0,25), BackgroundColor3=UI.TitleBg, BorderSizePixel=0})
-    CreateElement(header, "UICorner", {CornerRadius=UDim.new(0,2)})
-    CreateElement(header, "Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,1,0), BackgroundColor3=UI.Border, BorderSizePixel=0}) -- Header bottom border
-    
-    local title = CreateElement(header, "TextLabel", {Size=UDim2.new(1,-30,1,0), Position=UDim2.new(0,10,0,0), BackgroundTransparency=1, Text="NemiLon Aim Assist [ImGui]", TextColor3=UI.Text, TextXAlignment=Enum.TextXAlignment.Left, Font=Enum.Font.SourceSansBold, TextSize=14})
-    local closeBtn = CreateElement(header, "TextButton", {Size=UDim2.new(0,25,0,25), Position=UDim2.new(1,-25,0,0), BackgroundColor3=UI.TitleBg, Text="X", TextColor3=UI.Text, Font=Enum.Font.SourceSansBold, TextSize=12, AutoButtonColor=false})
-    closeBtn.MouseButton1Click:Connect(function() mainFrame.Visible=false end)
-    
-    MakeDraggable(header, mainFrame)
+local kbTitle = Instance.new("TextLabel", kbFrame)
+kbTitle.Size = UDim2.new(1, 0, 0, 20)
+kbTitle.BackgroundTransparency = 1
+kbTitle.Text = "Keybinds"
+kbTitle.TextColor3 = Color3.fromRGB(225, 225, 225)
+kbTitle.Font = Enum.Font.SourceSansBold
+kbTitle.TextSize = 14
 
-    local tabContainer = CreateElement(mainFrame, "Frame", {Size=UDim2.new(0,100,1,-25), Position=UDim2.new(0,0,0,25), BackgroundColor3=UI.ChildBg, BorderSizePixel=0})
-    CreateElement(tabContainer, "Frame", {Size=UDim2.new(0,1,1,0), Position=UDim2.new(1,-1,0,0), BackgroundColor3=UI.Border, BorderSizePixel=0}) -- Tab right border
-    local tabList = CreateElement(tabContainer, "UIListLayout", {Padding=UDim.new(0,0)})
-
-    local contentArea = CreateElement(mainFrame, "Frame", {Size=UDim2.new(1,-100,1,-25), Position=UDim2.new(0,100,0,25), BackgroundColor3=UI.WindowBg, BorderSizePixel=0})
-    local tabs = {"Aimbot", "Visuals", "Optimization", "Config"}
-    local frames = {}
-    local buttons = {}
-
-    for i, name in ipairs(tabs) do
-        local btn = CreateElement(tabContainer, "TextButton", {Size=UDim2.new(1,0,0,30), BackgroundColor3=i==1 and UI.FrameBg or UI.ChildBg, BorderSizePixel=0, Text=name, TextColor3=UI.Text, Font=Enum.Font.SourceSans, TextSize=14, AutoButtonColor=false})
-        buttons[name] = btn
-        
-        local frame = CreateElement(contentArea, "ScrollingFrame", {Size=UDim2.new(1,-20,1,-20), Position=UDim2.new(0,10,0,10), BackgroundTransparency=1, BorderSizePixel=0, ScrollBarThickness=6, ScrollBarImageColor3=UI.FrameBg, CanvasSize=UDim2.new(0,0,0,0), AutomaticCanvasSize=Enum.AutomaticSize.Y, Visible=i==1})
-        CreateElement(frame, "UIListLayout", {Padding=UDim.new(0,4), SortOrder=Enum.SortOrder.LayoutOrder})
-        frames[name] = frame
-
-        btn.MouseButton1Click:Connect(function()
-            for n, f in pairs(frames) do f.Visible = (n == name) end
-            for n, b in pairs(buttons) do b.BackgroundColor3 = (n == name) and UI.FrameBg or UI.ChildBg end
-        end)
-    end
-
-    -- AIMBOT TAB
-    local af = frames["Aimbot"]
-    CreateCheckbox(af, "Enable Aimbot", Config.Aimbot.Enabled, function(v) Config.Aimbot.Enabled=v end, "Включить наведение")
-    CreateCheckbox(af, "Toggle Mode", Config.Aimbot.ToggleMode, function(v) Config.Aimbot.ToggleMode=v end, "Удерживать или переключать")
-    CreateCheckbox(af, "Wall Check", Config.Aimbot.WallCheck, function(v) Config.Aimbot.WallCheck=v end, "Не целиться сквозь стены")
-    CreateCheckbox(af, "Target Indicator", Config.Aimbot.TargetIndicator, function(v) Config.Aimbot.TargetIndicator=v end, "Подсвечивать текущую цель")
-    CreateCheckbox(af, "Show FOV Circle", Config.Aimbot.ShowFOV, function(v) Config.Aimbot.ShowFOV=v end, "Рисовать круг радиуса")
-    CreateDropdown(af, "Aim Key", {"MouseButton1","MouseButton2","Q","E","R","F","Shift","Ctrl","Alt","C","V"}, Config.Aimbot.Key, function(v) Config.Aimbot.Key=v end)
-    CreateDropdown(af, "Aim Part", {"Head","Chest","HumanoidRootPart"}, Config.Aimbot.AimPart, function(v) Config.Aimbot.AimPart=v end)
-    CreateSlider(af, "Smoothness", 0, 0.99, 0.01, Config.Aimbot.Smoothness, function(v) Config.Aimbot.Smoothness=v end)
-    CreateSlider(af, "FOV Radius", 50, 500, 5, Config.Aimbot.FOV, function(v) Config.Aimbot.FOV=v end)
-
-    -- VISUALS TAB
-    local vf = frames["Visuals"]
-    CreateSeparator(vf, "ESP")
-    CreateCheckbox(vf, "Enable ESP", Config.ESP.Enabled, function(v) Config.ESP.Enabled=v end)
-    CreateCheckbox(vf, "Show Box", Config.ESP.Box, function(v) Config.ESP.Box=v end)
-    CreateDropdown(vf, "Box Type", {"Full","Corner"}, Config.ESP.BoxType, function(v) Config.ESP.BoxType=v end)
-    CreateCheckbox(vf, "Name", Config.ESP.Name, function(v) Config.ESP.Name=v end)
-    CreateCheckbox(vf, "Distance", Config.ESP.Distance, function(v) Config.ESP.Distance=v end)
-    CreateCheckbox(vf, "Health Bar", Config.ESP.HealthBar, function(v) Config.ESP.HealthBar=v end)
-    CreateSlider(vf, "Max Distance", 100, 3000, 50, Config.ESP.MaxDistance, function(v) Config.ESP.MaxDistance=v end)
-    
-    CreateSeparator(vf, "Render Features")
-    CreateCheckbox(vf, "Highlight (Chams)", Config.ESP.Highlight, function(v) Config.ESP.Highlight=v end, "Подсветка моделей сквозь стены")
-    CreateCheckbox(vf, "Off-Screen Arrows", Config.ESP.Arrows, function(v) Config.ESP.Arrows=v end, "Стрелки к врагам вне экрана")
-    CreateSlider(vf, "Arrow Size", 5, 50, 1, Config.ESP.ArrowSize, function(v) Config.ESP.ArrowSize=v end)
-
-    CreateSeparator(vf, "Colors")
-    CreateColorPicker(vf, "Box/Corner", Config.Colors.Box, function(v) Config.Colors.Box=v; Config.Colors.Corner=v end)
-    CreateColorPicker(vf, "Name", Config.Colors.Name, function(v) Config.Colors.Name=v end)
-    CreateColorPicker(vf, "Health", Config.Colors.HealthBar, function(v) Config.Colors.HealthBar=v end)
-    CreateColorPicker(vf, "Distance", Config.Colors.Distance, function(v) Config.Colors.Distance=v end)
-    CreateColorPicker(vf, "FOV Circle", Config.Colors.FOV, function(v) Config.Colors.FOV=v end)
-    CreateColorPicker(vf, "Target Indicator", Config.Colors.Target, function(v) Config.Colors.Target=v end)
-    CreateColorPicker(vf, "Highlight", Config.Colors.Highlight, function(v) Config.Colors.Highlight=v end)
-    CreateColorPicker(vf, "Arrows", Config.Colors.Arrow, function(v) Config.Colors.Arrow=v end)
-
-    -- OPTIMIZATION TAB
-    local of = frames["Optimization"]
-    CreateSeparator(of, "Performance")
-    CreateCheckbox(of, "Throttle ESP Update", Config.Optimization.ThrottleESP, function(v) Config.Optimization.ThrottleESP=v end, "Обновлять ESP в отельном потоке (повышает ФПС)")
-    CreateSlider(of, "Throttle Rate (sec)", 0.01, 0.2, 0.01, Config.Optimization.ThrottleRate, function(v) Config.Optimization.ThrottleRate=v end, "Задержка обновления ESP")
-    CreateCheckbox(of, "Disable Drawing When Far", Config.Optimization.DisableDrawingOnFar, function(v) Config.Optimization.DisableDrawingOnFar=v end, "Не рисовать 2D ESP на дальних дистанциях (оставляет Highlight)")
-    
-    -- CONFIG TAB
-    local cf = frames["Config"]
-    CreateSeparator(cf, "Settings")
-    CreateCheckbox(cf, "Show Keybind Visualizer", Config.GUI.ShowKeybinds, function(v) Config.GUI.ShowKeybinds=v; kbFrame.Visible=v end)
-    CreateDropdown(cf, "GUI Toggle Key", {"M","N","B","V","C","Insert","Delete","F1","F2"}, Config.GUI.Key, function(v) Config.GUI.Key=v end)
-    
-    CreateSeparator(cf, "Config Management")
-    CreateButton(cf, "Save Config", SaveConfig)
-    CreateButton(cf, "Remove Script", RemoveScript)
-
-    -- Tooltip Update Loop
-    RunService.RenderStepped:Connect(function()
-        if TooltipText ~= "" then
-            CurrentTooltip.Text = TooltipText
-            CurrentTooltip.Size = UDim2.new(0, TextService:GetTextSize(TooltipText, 13, Enum.Font.SourceSans, Vector2.new(250, 100)).X + 10, 0, TextService:GetTextSize(TooltipText, 13, Enum.Font.SourceSans, Vector2.new(250, 100)).Y + 6)
-            CurrentTooltip.Position = UDim2.new(0, Mouse.X + 15, 0, Mouse.Y + 15)
-            CurrentTooltip.Visible = true
-        else
-            CurrentTooltip.Visible = false
-        end
-        
-        -- Keybind Vis Update
-        aimbotKb.Text = string.format("[ %s ] Aimbot: %s", Config.Aimbot.Key, AimbotActive and "ON" or "OFF")
-        aimbotKb.TextColor3 = AimbotActive and Color3.fromRGB(0, 255, 0) or UI.TextDisabled
-    end)
-
-    -- GUI Toggle
-    UserInputService.InputBegan:Connect(function(input, gp)
-        if gp or ScriptRemoved then return end
-        local keyEnum = Enum.KeyCode[Config.GUI.Key]
-        if keyEnum and input.KeyCode == keyEnum then
-            mainFrame.Visible = not mainFrame.Visible
-        end
-    end)
-end
+local aimbotKb = Instance.new("TextLabel", kbFrame)
+aimbotKb.Size = UDim2.new(1, -10, 0, 20)
+aimbotKb.Position = UDim2.new(0, 5, 0, 25)
+aimbotKb.BackgroundTransparency = 1
+aimbotKb.TextXAlignment = Enum.TextXAlignment.Left
+aimbotKb.TextColor3 = Color3.fromRGB(120, 120, 120)
+aimbotKb.Font = Enum.Font.SourceSans
+aimbotKb.TextSize = 13
 
 -- [[ ИНИЦИАЛИЗАЦИЯ FOV ]]
 FOVCircle.Thickness = 1
@@ -639,8 +452,6 @@ local function IsAimKeyDown()
     elseif Config.Aimbot.Key == "MouseButton2" then return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
     else return UserInputService:IsKeyDown(Enum.KeyCode[Config.Aimbot.Key]) end
 end
-
-CreateGUI()
 
 -- [[ ОСНОВНЫЕ ЦИКЛЫ ]]
 RenderConnection = RunService.RenderStepped:Connect(function()
@@ -660,6 +471,10 @@ RenderConnection = RunService.RenderStepped:Connect(function()
     FOVCircle.Radius = Config.Aimbot.FOV
     FOVCircle.Color = Config.Colors.FOV
     FOVCircle.Visible = Config.Aimbot.ShowFOV and Config.Aimbot.Enabled
+
+    -- Keybind Vis Update
+    aimbotKb.Text = string.format("[ %s ] Aimbot: %s", Config.Aimbot.Key, AimbotActive and "ON" or "OFF")
+    aimbotKb.TextColor3 = AimbotActive and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(120, 120, 120)
 
     if not Config.Optimization.ThrottleESP then
         UpdateESP()
@@ -690,4 +505,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("✅ NemiLon Script loaded. Press " .. Config.GUI.Key .. " to open GUI.")
+print("✅ NemiLon Script loaded with Depthso ImGui. Press M to open GUI.")
